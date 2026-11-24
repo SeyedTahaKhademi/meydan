@@ -1,0 +1,35 @@
+name: Build HamMeydan Kotlin APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Bundle Vazirmatn for offline rendering
+        run: |
+          curl --fail --location --retry 3 'https://raw.githubusercontent.com/rastikerdar/vazirmatn/v33.003/fonts/ttf/Vazirmatn-Regular.ttf' -o app/src/main/assets/Vazirmatn-Regular.ttf
+          curl --fail --location --retry 3 'https://raw.githubusercontent.com/rastikerdar/vazirmatn/v33.003/OFL.txt' -o app/src/main/assets/Vazirmatn-OFL.txt
+          test -s app/src/main/assets/Vazirmatn-Regular.ttf
+      - run: gradle :app:assembleDebug --no-daemon
+      - name: Name and verify APK
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk HamMeydan-v5-kotlin.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose HamMeydan-v5-kotlin.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HamMeydan-v5-kotlin
+          path: HamMeydan-v5-kotlin.apk
